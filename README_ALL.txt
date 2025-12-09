@@ -31,8 +31,9 @@ Mammography- contains both svm and cnn files for mammography
    - Deep Learning Toolbox
    - Pretrained Model support packages (ResNet-18, EfficientNet-B0)
 3. Run the scripts:
-   - For ultrasound: `ultrasound_svm.m`, `ultrasound_cnn.m`
+    - For ultrasound: `ultrasound_svm2.m`, `ultrasound_cnn.m`, ultrasound_svm_2class.m
    - For mammography: `build_mammo_dataset.m`, then `mammo_svm.m`, `mammo_custom_cnn.m`, and `mammo_transfer_learning.m`
+
 
 ---
 
@@ -51,7 +52,7 @@ Mammography- contains both svm and cnn files for mammography
 
 ## 🙋 Author
 
-**Syed Hammad**  
+**Syed Hamed**  
 Email: Syed.ham@nrteastern.edu
 Fall 2025 – Northeastern University
 
