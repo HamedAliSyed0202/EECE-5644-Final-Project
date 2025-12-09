@@ -1,0 +1,108 @@
+%% ULTRASOUND 2-CLASS CNN (Benign vs Malignant)
+% EECE 5644 – Final Project
+% Syed Hamed Ali
+
+clear; clc; close all;
+
+%% STEP 1 — Load Dataset
+rootDir = 'C:\Users\syedh\OneDrive\Desktop\FinalProjectEECE5644\CNN\Ultrasound';
+
+imds = imageDatastore(rootDir, ...
+    'IncludeSubfolders', true, ...
+    'LabelSource', 'foldernames');
+
+disp('Original dataset:');
+countEachLabel(imds)
+
+%% STEP 2 — Keep ONLY benign & malignant (remove normal)
+imds = subset(imds, imds.Labels ~= 'normal');
+
+% IMPORTANT: remove unused category "normal"
+imds.Labels = removecats(imds.Labels);
+
+disp('After removing normal class:');
+countEachLabel(imds)
+
+%% STEP 3 — Preprocessing: Resize & Grayscale
+imgSize = [224 224];
+numChannels = 1;
+
+imds.ReadFcn = @(file) preprocessUltrasound(file, imgSize);
+
+%% STEP 4 — Split into Train / Validation
+[imdsTrain, imdsVal] = splitEachLabel(imds, 0.8, 'randomized');
+
+%% STEP 5 — Define CNN Architecture
+layers = [
+
+    imageInputLayer([imgSize numChannels], "Name", "input")
+
+    convolution2dLayer(3, 16, "Padding", "same", "Name", "conv1")
+    batchNormalizationLayer("Name", "bn1")
+    reluLayer("Name", "relu1")
+    maxPooling2dLayer(2, "Stride", 2, "Name", "pool1")
+
+    convolution2dLayer(3, 32, "Padding", "same", "Name", "conv2")
+    batchNormalizationLayer("Name", "bn2")
+    reluLayer("Name", "relu2")
+    maxPooling2dLayer(2, "Stride", 2, "Name", "pool2")
+
+    convolution2dLayer(3, 64, "Padding", "same", "Name", "conv3")
+    batchNormalizationLayer("Name", "bn3")
+    reluLayer("Name", "relu3")
+    maxPooling2dLayer(2, "Stride", 2, "Name", "pool3")
+
+    fullyConnectedLayer(2, "Name", "fc")
+    softmaxLayer("Name", "softmax")
+    classificationLayer("Name", "output")
+];
+
+%% STEP 6 — Training Options
+miniBatchSize = 32;
+valFrequency  = floor(numel(imdsTrain.Files) / miniBatchSize);
+
+options = trainingOptions('adam', ...
+    'InitialLearnRate', 1e-4, ...
+    'MaxEpochs', 15, ...
+    'MiniBatchSize', miniBatchSize, ...
+    'Shuffle', 'every-epoch', ...
+    'ValidationData', imdsVal, ...
+    'ValidationFrequency', valFrequency, ...
+    'Verbose', true, ...
+    'Plots', 'training-progress');
+
+%% STEP 7 — Train CNN
+net = trainNetwork(imdsTrain, layers, options);
+
+%% STEP 8 — Evaluate on Validation Data
+predictedLabels = classify(net, imdsVal);
+trueLabels      = imdsVal.Labels;
+
+accuracy = mean(predictedLabels == trueLabels) * 100;
+fprintf('\nUltrasound CNN Accuracy (2-Class): %.2f%%\n', accuracy);
+
+% Clean categories (prevents black boxes in confusionchart)
+trueLabels      = removecats(trueLabels);
+predictedLabels = removecats(predictedLabels);
+
+figure;
+confusionchart(trueLabels, predictedLabels);
+title('Ultrasound CNN Results (Benign vs Malignant)');
+
+%% Helper Function: Preprocess Ultrasound Images
+function Iout = preprocessUltrasound(filename, imgSize)
+    I = imread(filename);
+
+    % Convert to grayscale if RGB
+    if size(I,3) == 3
+        I = rgb2gray(I);
+    end
+
+    % Resize
+    I = imresize(I, imgSize);
+
+    % Normalize to [0,1]
+    I = im2single(I);
+
+    Iout = I;
+end
